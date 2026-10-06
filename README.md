@@ -28,6 +28,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.read(filepath)](#syntaxtreereadfilepath)
   - [SyntaxTree.parse(source)](#syntaxtreeparsesource)
   - [SyntaxTree.format(source)](#syntaxtreeformatsource)
+  - [SyntaxTree.transform_safe_navigation(source)](#syntaxtreetransform_safe_navigationsource)
   - [SyntaxTree.mutation(&block)](#syntaxtreemutationblock)
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
   - [SyntaxTree.index(source)](#syntaxtreeindexsource)
@@ -367,6 +368,10 @@ This function takes an input string containing Ruby code and returns the syntax 
 ### SyntaxTree.format(source)
 
 This function takes an input string containing Ruby code, parses it into its underlying syntax tree, and formats it back out to a string. You can optionally pass a second argument to this method as well that is the maximum width to print. It defaults to `80`.
+
+### SyntaxTree.transform_safe_navigation(source)
+
+This function rewrites safe navigation calls into ordinary `nil?` checks and conditional expressions. It raises `SyntaxTree::SafeNavigation::UnsupportedSyntax` for constructs that do not yet have an expression-level rewrite.
 
 ### SyntaxTree.mutation(&block)
 

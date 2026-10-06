@@ -33,6 +33,7 @@ module SyntaxTree
   autoload :MutationVisitor, "syntax_tree/mutation_visitor"
   autoload :Pattern, "syntax_tree/pattern"
   autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
+  autoload :SafeNavigation, "syntax_tree/safe_navigation"
   autoload :Search, "syntax_tree/search"
   autoload :WithScope, "syntax_tree/with_scope"
 
@@ -162,5 +163,11 @@ module SyntaxTree
   # node in the tree that matches the pattern to the given block.
   def self.search_file(filepath, query, &block)
     search(read(filepath), query, &block)
+  end
+
+  # Rewrites safe navigation calls in the given source into ordinary
+  # conditional expressions.
+  def self.transform_safe_navigation(source)
+    format_node(source, SafeNavigation.transform(parse(source)))
   end
 end
