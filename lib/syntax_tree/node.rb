@@ -3788,11 +3788,16 @@ module SyntaxTree
     end
 
     def copy(value: nil, inline: nil, location: nil)
-      Comment.new(
-        value: value || self.value,
-        inline: inline || self.inline,
-        location: location || self.location
-      )
+      comment =
+        Comment.new(
+          value: value || self.value,
+          inline: inline || self.inline,
+          location: location || self.location
+        )
+
+      comment.leading! if leading?
+      comment.trailing! if trailing?
+      comment
     end
 
     alias deconstruct child_nodes
@@ -5016,10 +5021,15 @@ module SyntaxTree
     end
 
     def copy(value: nil, location: nil)
-      EmbDoc.new(
-        value: value || self.value,
-        location: location || self.location
-      )
+      embdoc =
+        EmbDoc.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      embdoc.leading! if leading?
+      embdoc.trailing! if trailing?
+      embdoc
     end
 
     alias deconstruct child_nodes

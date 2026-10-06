@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Added `SyntaxTree::EditPlan` for merging node-bound replacements, deletions, and insertions before applying them to one copied AST.
+
 ## [6.3.0] - 2025-07-16
 
 ### Added

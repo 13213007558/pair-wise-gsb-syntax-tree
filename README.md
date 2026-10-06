@@ -372,6 +372,25 @@ This function takes an input string containing Ruby code, parses it into its und
 
 This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.
 
+### SyntaxTree::EditPlan
+
+An edit plan records replacements, deletions, and insertions as references to the original AST nodes. Multiple codemods can independently produce plans and merge them before any tree is copied or formatted.
+
+Independent edits commute, so merging plans in either order produces the same result. Insertions at the same gap must explicitly provide an integer `order`. Replacing or deleting an ancestor conflicts with edits inside that ancestor by default, because the descendant edit targets a subtree that would no longer be applied.
+
+```ruby
+source = File.read(filepath)
+root = SyntaxTree.parse(source)
+
+plan_a = SyntaxTree::EditPlan.new(root)
+plan_b = SyntaxTree::EditPlan.new(root)
+
+merged = plan_a.merge(plan_b)
+new_root = merged.apply(source)
+```
+
+`apply` performs all edits in one immutable tree copy, formats the resulting tree, and reparses it. Comments attached to unchanged nodes remain attached; the original AST is never modified.
+
 ### SyntaxTree.search(source, query, &block)
 
 This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
