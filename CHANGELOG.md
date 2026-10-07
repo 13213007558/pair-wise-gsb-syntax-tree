@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- `SyntaxTree::Pattern` now supports captures in search queries. A subtree can be named with the `=>` operator or a bare identifier, and a sequence of sibling nodes can be named with the starred portion of an array pattern (array patterns now support a prefix, a suffix, and a single rest fragment). Compiling with `SyntaxTree::Pattern#compile_with_captures` returns a callable that yields a `SyntaxTree::Pattern::Match` containing each captured value and its source location. Capturing the same name more than once requires the captured values to be structurally equal (ignoring location and comments). `SyntaxTree::Search#scan_with_captures` exposes the same functionality while scanning a tree. The boolean interface of `SyntaxTree::Pattern#compile` is unchanged.
+
 ## [6.3.0] - 2025-07-16
 
 ### Added

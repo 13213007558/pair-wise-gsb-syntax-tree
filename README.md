@@ -376,6 +376,33 @@ This function yields a new mutation visitor to the block, and then returns the i
 
 This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
 
+#### Captures
+
+Search queries can also name parts of the matched tree so they can be extracted later. A subtree can be captured with the `=>` operator or with a bare identifier, and a sequence of sibling nodes can be captured by naming the starred portion of an array pattern (array patterns support a prefix, a suffix, and a single rest fragment):
+
+```ruby
+pattern = SyntaxTree::Pattern.new("Binary[left: Int => number]")
+matcher = pattern.compile_with_captures
+
+matcher.call(SyntaxTree.parse("1 + 2").statements.body.first)
+```
+
+The returned `SyntaxTree::Pattern::Match` contains a capture for every name in the pattern. Each capture knows both the value it captured and the source location that value spans:
+
+```ruby
+match = matcher.call(node)
+match.captures[:number].value    # (int "1")
+match.captures[:number].location # the location of the `1` in the source
+```
+
+When the same name is captured more than once, the captured values are required to be structurally equal (equal in every respect except for location and comments). This makes it possible to search for things like two calls made on the same receiver:
+
+```ruby
+SyntaxTree::Pattern.new("Statements[CallNode[receiver: VCall => recv], *, CallNode[receiver: VCall => recv]]")
+```
+
+Captures are scoped to the branch of the pattern that created them, so a failed alternation branch or nested constraint never leaks its captures into the next branch. Alternation branches must bind the same set of names, and patterns that would require evaluating Ruby expressions (pinned references, guards, interpolation) are rejected; both are reported as a `SyntaxTree::Pattern::CompilationError` at compile time. To scan a whole tree and receive the match results, use `SyntaxTree::Search#scan_with_captures`, which yields each matching node along with its `SyntaxTree::Pattern::Match`.
+
 ### SyntaxTree.index(source)
 
 This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.

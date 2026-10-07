@@ -22,5 +22,26 @@ module SyntaxTree
         queue += node.child_nodes
       end
     end
+
+    # Scans the given subtree for nodes that match the pattern, yielding
+    # each matching node along with the result of matching it. When the
+    # pattern was compiled with Pattern#compile_with_captures, the result
+    # is a SyntaxTree::Pattern::Match containing the values and source
+    # locations that the pattern captured.
+    def scan_with_captures(root)
+      return to_enum(__method__, root) unless block_given?
+      queue = [root]
+
+      until queue.empty?
+        node = queue.shift
+        next unless node
+
+        if (match = pattern.call(node))
+          yield node, match
+        end
+
+        queue += node.child_nodes
+      end
+    end
   end
 end
