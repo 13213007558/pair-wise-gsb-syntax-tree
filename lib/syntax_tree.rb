@@ -23,6 +23,7 @@ module SyntaxTree
 
   autoload :Database, "syntax_tree/database"
   autoload :DSL, "syntax_tree/dsl"
+  autoload :ExtractMethod, "syntax_tree/extract_method"
   autoload :FieldVisitor, "syntax_tree/field_visitor"
   autoload :Index, "syntax_tree/index"
   autoload :JSONVisitor, "syntax_tree/json_visitor"
@@ -107,6 +108,17 @@ module SyntaxTree
   # documentation generation.
   def self.index_file(filepath)
     Index.index_file(filepath)
+  end
+
+  # Extracts a consecutive selection of statements from one method into a
+  # private method on the same class or module. Returns either an
+  # ExtractMethod::Plan or an ExtractMethod::Rejection.
+  def self.extract_method(source, selection, method_name)
+    ExtractMethod.call(
+      source: source,
+      selection: selection,
+      method_name: method_name
+    )
   end
 
   # A convenience method for creating a new mutation visitor.
