@@ -21,6 +21,7 @@ module SyntaxTree
   # CLI. Requiring those features takes time, so we autoload as many constants
   # as possible in order to keep the CLI as fast as possible.
 
+  autoload :CFG, "syntax_tree/cfg"
   autoload :Database, "syntax_tree/database"
   autoload :DSL, "syntax_tree/dsl"
   autoload :FieldVisitor, "syntax_tree/field_visitor"
@@ -107,6 +108,17 @@ module SyntaxTree
   # documentation generation.
   def self.index_file(filepath)
     Index.index_file(filepath)
+  end
+
+  # Builds a read-only control flow graph for a method, block, or lambda.
+  def self.control_flow_graph(entry)
+    CFG.build(entry)
+  end
+
+  # Builds a read-only control flow graph for every method, block, and lambda
+  # contained in the given source.
+  def self.control_flow_graphs(source)
+    CFG.for_source(source)
   end
 
   # A convenience method for creating a new mutation visitor.

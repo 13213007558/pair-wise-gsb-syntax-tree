@@ -31,6 +31,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.mutation(&block)](#syntaxtreemutationblock)
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
   - [SyntaxTree.index(source)](#syntaxtreeindexsource)
+  - [SyntaxTree.control_flow_graph(entry)](#syntaxtreecontrol_flow_graphentry)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
   - [copy(**attrs)](#copyattrs)
@@ -379,6 +380,12 @@ This function takes an input string containing Ruby code, an input string contai
 ### SyntaxTree.index(source)
 
 This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.
+
+### SyntaxTree.control_flow_graph(entry)
+
+Builds a read-only `SyntaxTree::CFG::Graph` for a method, block, or lambda. `SyntaxTree.control_flow_graphs(source)` builds one graph for every entry point in a source string. Every edge carries the originating AST `location` and has a semantic `type`, such as `:branch_true`, `:loop_back`, `:call_exception`, or `:return`.
+
+Calls that may raise an unknown exception receive a conservative `:call_exception` edge to the surrounding rescue and/or ensure clauses. When an `ensure` clause exits again, for example with `return`, the replacement edge has `replaces?` set to true so it is not mistaken for an ordinary sequential edge.
 
 ## Nodes
 
