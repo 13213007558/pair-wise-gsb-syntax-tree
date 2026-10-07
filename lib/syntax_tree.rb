@@ -26,6 +26,7 @@ module SyntaxTree
   autoload :FieldVisitor, "syntax_tree/field_visitor"
   autoload :Index, "syntax_tree/index"
   autoload :JSONVisitor, "syntax_tree/json_visitor"
+  autoload :KeywordForwardingChecker, "syntax_tree/keyword_forwarding_checker"
   autoload :LanguageServer, "syntax_tree/language_server"
   autoload :MatchVisitor, "syntax_tree/match_visitor"
   autoload :Mermaid, "syntax_tree/mermaid"
