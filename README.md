@@ -380,6 +380,32 @@ This function takes an input string containing Ruby code, an input string contai
 
 This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.
 
+### SyntaxTree::CFG.build(source, method_name:)
+
+Builds a conservative control-flow graph for one method without evaluating the
+source. Basic blocks, edges, and instructions carry source locations. The graph
+includes conditional and short-circuit branches, rescue matching, `ensure`,
+loop control, exception edges, explicit unknown call effects, and call edges
+for unresolved or recursive calls. Ordinary block and lambda exits are kept in
+separate regions.
+
+```ruby
+graph = SyntaxTree::CFG.build(source, method_name: :example)
+graph.to_h
+```
+
+`SyntaxTree::CFG.check_path` follows one path through the graph using branch or
+instruction choices and records ensure/region/call events without running the
+analyzed method.
+
+```ruby
+SyntaxTree::CFG.check_path(
+  source,
+  method_name: :example,
+  choices: { "call_something" => :exception }
+)
+```
+
 ## Nodes
 
 There are many different node types in the syntax tree. They are meant to be treated as immutable structs containing links to child nodes with minimal logic contained within their implementation. However, for the most part they all respond to a certain set of APIs, listed below.

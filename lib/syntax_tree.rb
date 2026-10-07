@@ -22,6 +22,7 @@ module SyntaxTree
   # as possible in order to keep the CLI as fast as possible.
 
   autoload :Database, "syntax_tree/database"
+  autoload :CFG, "syntax_tree/cfg"
   autoload :DSL, "syntax_tree/dsl"
   autoload :FieldVisitor, "syntax_tree/field_visitor"
   autoload :Index, "syntax_tree/index"
