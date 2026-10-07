@@ -23,6 +23,7 @@ module SyntaxTree
 
   autoload :Database, "syntax_tree/database"
   autoload :DSL, "syntax_tree/dsl"
+  autoload :ExtractMethod, "syntax_tree/extract_method"
   autoload :FieldVisitor, "syntax_tree/field_visitor"
   autoload :Index, "syntax_tree/index"
   autoload :JSONVisitor, "syntax_tree/json_visitor"
@@ -107,6 +108,28 @@ module SyntaxTree
   # documentation generation.
   def self.index_file(filepath)
     Index.index_file(filepath)
+  end
+
+  # Analyzes a contiguous range of statements for extraction into another
+  # method. The range is provided as one-based inclusive line numbers.
+  def self.extract_method_analysis(source, start_line:, end_line:, method_name: "extracted_method")
+    ExtractMethod.analyze(
+      source,
+      start_line: start_line,
+      end_line: end_line,
+      method_name: method_name
+    )
+  end
+
+  # Returns the source after performing an extract-method refactoring. Raises
+  # an error when the analysis found that the extraction would be unsafe.
+  def self.extract_method(source, start_line:, end_line:, method_name: "extracted_method")
+    ExtractMethod.extract(
+      source,
+      start_line: start_line,
+      end_line: end_line,
+      method_name: method_name
+    )
   end
 
   # A convenience method for creating a new mutation visitor.
