@@ -170,6 +170,89 @@ module SyntaxTree
       entries.map { |entry| entry.comments.to_a }
     end
 
+    def test_constant_resolution_lexical_nesting
+      result = resolve_fixture_constants("nested_definition.rb").last
+
+      assert_equal [%i[A X]], result.definitions.map(&:path)
+      assert_equal([[:lexical, %i[A B]], [:lexical, [:A]]], result.lookup_path)
+      assert_predicate result, :certain?
+    end
+
+    def test_constant_resolution_path_definition_is_not_lexically_nested
+      result = resolve_fixture_constants("path_definition.rb").last
+
+      assert_equal [[:X]], result.definitions.map(&:path)
+      assert_equal([[:lexical, %i[A B]], [:lexical, []]], result.lookup_path)
+      assert_predicate result, :certain?
+    end
+
+    def test_path_definition_does_not_find_outer_nested_constant
+      source = <<~SOURCE
+        class A
+          X = :a
+        end
+
+        class A::B
+          X
+        end
+      SOURCE
+      result = Index.resolve_constants(Index.static_index(source)).last
+
+      assert_equal [], result.definitions
+      assert_equal :unresolved, result.uncertainties.first.reason
+    end
+
+    def test_constant_resolution_inheritance_and_include
+      result = resolve_fixture_constants("ancestors.rb").last
+
+      assert_equal [%i[Included VALUE]], result.definitions.map(&:path)
+      assert_equal(
+        [[:lexical, [:Child]], [:lexical, [:Included]]],
+        result.lookup_path
+      )
+    end
+
+    def test_constant_resolution_class_inheritance
+      source = <<~SOURCE
+        class Parent
+          VALUE = :parent
+        end
+
+        class Child < Parent
+          VALUE
+        end
+      SOURCE
+      result = Index.resolve_constants(Index.static_index(source)).last
+
+      assert_equal [%i[Parent VALUE]], result.definitions.map(&:path)
+      assert_equal(
+        [[:lexical, [:Child]], [:lexical, [:Parent]]],
+        result.lookup_path
+      )
+    end
+
+    def test_constant_resolution_explicit_root
+      index = Index.static_index("X = 1; module A; X = 2; ::X; end")
+      result = Index.resolve_constants(index).last
+
+      assert_equal [[:X]], result.definitions.map(&:path)
+      assert_equal [[:root, []]], result.lookup_path
+    end
+
+    def test_constant_resolution_preserves_uncertainty
+      results = resolve_fixture_constants("uncertain.rb")
+
+      conditional =
+        results.find { |result| result.reference.path == [:Conditional] }
+      assert_includes conditional.uncertainties.map(&:reason), :conditional_load
+
+      dynamic = results.find { |result| result.reference.path == [:Dynamic] }
+      assert_includes dynamic.uncertainties.map(&:reason), :const_set
+
+      missing = results.find { |result| result.reference.path == [:Missing] }
+      assert_includes missing.uncertainties.map(&:reason), :const_missing
+    end
+
     private
 
     def index_each(source)
@@ -178,6 +261,11 @@ module SyntaxTree
       if defined?(RubyVM::InstructionSequence)
         yield Index.index(source, backend: Index::ISeqBackend.new).last
       end
+    end
+
+    def resolve_fixture_constants(fixture)
+      filepath = File.join(__dir__, "fixtures", "constants", fixture)
+      Index.resolve_constants(Index.static_index_file(filepath))
     end
   end
 end

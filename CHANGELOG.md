@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Static constant resolution for lexical nesting, explicit `::` paths, class
+  inheritance, and module includes, including lookup paths and uncertainty.
+
 ## [6.3.0] - 2025-07-16
 
 ### Added

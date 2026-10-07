@@ -679,5 +679,18 @@ module SyntaxTree
     def self.index_file(filepath, backend: INDEX_BACKEND.new)
       backend.index_file(filepath)
     end
+
+    def self.static_index(source)
+      StaticCollector.new.index(source)
+    end
+
+    def self.static_index_file(filepath)
+      StaticCollector.new.index(SyntaxTree.read(filepath))
+    end
+
+    def self.resolve_constants(*indexes)
+      StaticConstantResolver.new(indexes.flatten).resolve
+    end
   end
 end
+require_relative "static_constant_index"
