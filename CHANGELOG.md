@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Structural search patterns can now name captures. Bare identifiers bind a
+  subtree and splats bind a sequence fragment, including prefixes, suffixes,
+  and a single remaining fragment. `Pattern#compile` still returns a boolean
+  matcher (`#call`/`#===`), and the new `#match` returns the captured values
+  with their source ranges. `SyntaxTree.search_matches` yields each matching
+  node together with the match result.
+- Repeated captures compare structurally (ignoring locations and comments)
+  instead of checking object identity.
+- Array find patterns support named leading and trailing fragments.
+- Added `Not[...]` (also available as a top-level `unless` guard) and
+  `Ancestor[...]` constraints with their own binding boundaries; captures from
+  failed alternation branches no longer leak into later branches, and
+  alternation branches that do not bind the same captures are rejected at
+  compile time.
+- Pinned expressions and other non-structural guard expressions are rejected
+  at compile time so queries can never execute Ruby.
+
 ## [6.3.0] - 2025-07-16
 
 ### Added

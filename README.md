@@ -376,6 +376,51 @@ This function yields a new mutation visitor to the block, and then returns the i
 
 This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
 
+Patterns can additionally name subtrees and sequence fragments using bare
+identifiers. The first occurrence of a name binds the matched value; any
+repeated occurrence must match a structurally equal node (locations and
+comments are ignored, object identity is not used). To retrieve the captured
+values along with their source ranges, compile the pattern yourself and use
+`#match`, or use `SyntaxTree.search_matches`:
+
+```ruby
+matcher = SyntaxTree::Pattern.new("Binary[left: left, right: right]").compile
+result = matcher.match(node)
+result[:left]            #=> the node matched by `left`
+result.location(:right) #=> SyntaxTree::Location for the captured source
+```
+
+```ruby
+SyntaxTree.search_matches(source, "CallNode[receiver: receiver, arguments: ArgParen[arguments: Args[parts: [*arguments]]]]") do |node, match|
+  match[:receiver]   #=> the receiver subtree
+  match[:arguments] #=> the array of argument nodes
+end
+```
+
+Splat captures take prefixes, a single remaining fragment, and suffixes of
+array-shaped sequences (`[first, *middle, last]` and `[*before, target,
+*after]`). An empty fragment captures an empty array with a zero-width source
+range.
+
+The structural-search language adds three binding boundaries. Alternation
+branches (`a | b`) must bind the same set of names, and captures from a branch
+that fails never leak into the next branch. Negative conditions are written
+with an `unless` guard or `Not[...]`, e.g. `VarRef unless Const` or
+`Binary[left: Not[Int]]`; their captures are discarded. Ancestor constraints
+are written with `Ancestor[...]`, where the first pattern matches the node and
+the remaining patterns match surrounding ancestors in outermost order, e.g.
+`Ancestor[Int, CallNode]`.
+
+Patterns cannot execute Ruby from the query: pinned expressions (`^expr`),
+non-structural guard expressions, interpolated strings, and invalid or
+ambiguously bound captures raise a `SyntaxTree::Pattern::CompilationError` at
+compile time.
+
+### SyntaxTree.search_matches(source, query, &block)
+
+Like `SyntaxTree.search`, but yields each matching node together with the
+`SyntaxTree::Pattern::MatchResult` containing the named captures.
+
 ### SyntaxTree.index(source)
 
 This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.

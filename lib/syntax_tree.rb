@@ -158,6 +158,17 @@ module SyntaxTree
     Search.new(pattern).scan(program, &block)
   end
 
+  # Searches through the given source using the given pattern and yields each
+  # node in the tree that matches the pattern along with the
+  # Pattern::MatchResult containing any named captures. Captured sequences
+  # include their source ranges.
+  def self.search_matches(source, query, &block)
+    pattern = Pattern.new(query).compile
+    program = parse(source)
+
+    Search.new(pattern).scan_with_matches(program, &block)
+  end
+
   # Searches through the given file using the given pattern and yields each
   # node in the tree that matches the pattern to the given block.
   def self.search_file(filepath, query, &block)

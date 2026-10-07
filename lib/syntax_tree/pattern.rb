@@ -1,5 +1,10 @@
 # frozen_string_literal: true
 
+require_relative "pattern/matcher"
+require_relative "pattern/bindings"
+require_relative "pattern/compiler"
+require_relative "pattern/compilation_error"
+
 module SyntaxTree
   # A pattern is an object that wraps a Ruby pattern matching expression. The
   # expression would normally be passed to an `in` clause within a `case`
@@ -10,49 +15,105 @@ module SyntaxTree
   #     in Const[value: "SyntaxTree"]
   #     end
   #
-  # the pattern is the `Const[value: "SyntaxTree"]` expression. Within Syntax
-  # Tree, every node generates these kinds of expressions using the
-  # #construct_keys method.
+  # the pattern is the `Const[value: "SyntaxTree"]` expression.
   #
-  # The pattern gets compiled into an object that responds to call by running
-  # the #compile method. This method itself will run back through Syntax Tree to
-  # parse the expression into a tree, then walk the tree to generate the
-  # necessary callable objects. For example, if you wanted to compile the
-  # expression above into a callable, you would:
+  # The pattern gets compiled by running the #compile method. The returned
+  # object responds to #call with a single argument, which is the node to match
+  # against, and returns a boolean. It also responds to #match, which returns a
+  # Pattern::MatchResult (or nil if the match failed) that contains any named
+  # captures taken during the match. For example:
   #
-  #     callable = SyntaxTree::Pattern.new("Const[value: 'SyntaxTree']").compile
-  #     callable.call(node)
+  #     matcher = SyntaxTree::Pattern.new("CallNode[receiver: rec]").compile
+  #     matcher.call(node)
+  #     result = matcher.match(node)
+  #     result.captures[:rec] #=> { value: ..., location: ... }
   #
-  # The callable object returned by #compile is guaranteed to respond to #call
-  # with a single argument, which is the node to match against. It also is
-  # guaranteed to respond to #===, which means it itself can be used in a `case`
-  # expression, as in:
-  #
-  #     case node
-  #     when callable
-  #     end
+  # In addition to the pattern matching syntax documented below, bare
+  # identifiers act as captures. The first occurrence binds the matched node
+  # (or sequence, for splats) to the name, and any repeated occurrence must
+  # match a structurally equal node (ignoring locations and comments).
   #
   # If the query given to the initializer cannot be compiled into a valid
-  # matcher (either because of a syntax error or because it is using syntax we
-  # do not yet support) then a SyntaxTree::Pattern::CompilationError will be
-  # raised.
+  # matcher (either because of a syntax error, because it is using syntax we do
+  # not yet support, or because it asks for ambiguous captures) then a
+  # SyntaxTree::Pattern::CompilationError will be raised.
   class Pattern
-    # Raised when the query given to a pattern is either invalid Ruby syntax or
-    # is using syntax that we don't yet support.
-    class CompilationError < StandardError
-      def initialize(repr)
-        super(<<~ERROR)
-          Syntax Tree was unable to compile the pattern you provided to search
-          into a usable expression. It failed on to understand the node
-          represented by:
+    # A single named capture produced by matching a pattern against a node.
+    #
+    # +value+ is the node (or array of nodes for a splat capture) that was
+    # matched, and +location+ is the corresponding source range (which can be
+    # empty for a splat that matched nothing).
+    class Capture
+      attr_reader :name, :value, :location
 
-          #{repr}
+      def initialize(name, value, location)
+        @name = name
+        @value = value
+        @location = location
+      end
 
-          Note that not all syntax supported by Ruby's pattern matching syntax
-          is also supported by Syntax Tree's code search. If you're using some
-          syntax that you believe should be supported, please open an issue on
-          GitHub at https://github.com/ruby-syntax-tree/syntax_tree/issues/new.
-        ERROR
+      def ==(other)
+        other.is_a?(Capture) && name == other.name && value == other.value
+      end
+      alias eql? ==
+
+      def hash
+        [name, value].hash
+      end
+    end
+
+    # The result of successfully matching a compiled pattern against a node.
+    #
+    # +node+ is the node that was matched and +captures+ is a hash of capture
+    # names to Capture objects.
+    class MatchResult
+      attr_reader :node, :captures
+
+      def initialize(node, captures)
+        @node = node
+        @captures = captures
+      end
+
+      # Fetches the value bound to the given capture name.
+      def [](name)
+        captures.fetch(name.to_sym).value
+      end
+
+      # Fetches the source range bound to the given capture name.
+      def location(name)
+        captures.fetch(name.to_sym).location
+      end
+
+      def to_h
+        captures.transform_values(&:value)
+      end
+    end
+
+    # The object returned by Pattern#compile. It supports the original boolean
+    # interface through #call and #===, and exposes #match for retrieving the
+    # named captures that a pattern takes.
+    class Compiled
+      attr_reader :query, :matcher
+
+      def initialize(query, matcher)
+        @query = query
+        @matcher = matcher
+      end
+
+      def call(node, ancestors = [])
+        matcher.match?(node, Compiler::Bindings.new, ancestors)
+      end
+
+      def ===(node)
+        call(node)
+      end
+
+      def match(node, ancestors = [])
+        bindings = Compiler::Bindings.new
+
+        if matcher.match?(node, bindings, ancestors)
+          MatchResult.new(node, bindings.captures)
+        end
       end
     end
 
@@ -71,218 +132,9 @@ module SyntaxTree
         end
 
       raise CompilationError, query if program.nil?
-      compile_node(program.statements.body.first.consequent.pattern)
-    end
 
-    private
-
-    # Shortcut for combining two procs into one that returns true if both return
-    # true.
-    def combine_and(left, right)
-      ->(other) { left.call(other) && right.call(other) }
-    end
-
-    # Shortcut for combining two procs into one that returns true if either
-    # returns true.
-    def combine_or(left, right)
-      ->(other) { left.call(other) || right.call(other) }
-    end
-
-    # Raise an error because the given node is not supported.
-    def compile_error(node)
-      raise CompilationError, PP.pp(node, +"").chomp
-    end
-
-    # There are a couple of nodes (string literals, dynamic symbols, and regexp)
-    # that contain list of parts. This can include plain string content,
-    # interpolated expressions, and interpolated variables. We only support
-    # plain string content, so this method will extract out the plain string
-    # content if it is the only element in the list.
-    def extract_string(node)
-      parts = node.parts
-
-      if parts.length == 1 && (part = parts.first) && part.is_a?(TStringContent)
-        part.value
-      end
-    end
-
-    # in [foo, bar, baz]
-    def compile_aryptn(node)
-      compile_error(node) if !node.rest.nil? || node.posts.any?
-
-      constant = node.constant
-      compiled_constant = compile_node(constant) if constant
-
-      preprocessed = node.requireds.map { |required| compile_node(required) }
-
-      compiled_requireds = ->(other) do
-        deconstructed = other.deconstruct
-
-        deconstructed.length == preprocessed.length &&
-          preprocessed
-            .zip(deconstructed)
-            .all? { |(matcher, value)| matcher.call(value) }
-      end
-
-      if compiled_constant
-        combine_and(compiled_constant, compiled_requireds)
-      else
-        compiled_requireds
-      end
-    end
-
-    # in foo | bar
-    def compile_binary(node)
-      compile_error(node) if node.operator != :|
-
-      combine_or(compile_node(node.left), compile_node(node.right))
-    end
-
-    # in Ident
-    # in String
-    def compile_const(node)
-      value = node.value
-
-      if SyntaxTree.const_defined?(value, false)
-        clazz = SyntaxTree.const_get(value)
-
-        ->(other) { clazz === other }
-      elsif Object.const_defined?(value, false)
-        clazz = Object.const_get(value)
-
-        ->(other) { clazz === other }
-      else
-        compile_error(node)
-      end
-    end
-
-    # in SyntaxTree::Ident
-    def compile_const_path_ref(node)
-      parent = node.parent
-      compile_error(node) if !parent.is_a?(VarRef) || !parent.value.is_a?(Const)
-
-      if parent.value.value == "SyntaxTree"
-        compile_node(node.constant)
-      else
-        compile_error(node)
-      end
-    end
-
-    # in :""
-    # in :"foo"
-    def compile_dyna_symbol(node)
-      if node.parts.empty?
-        symbol = :""
-
-        ->(other) { symbol === other }
-      elsif (value = extract_string(node))
-        symbol = value.to_sym
-
-        ->(other) { symbol === other }
-      else
-        compile_error(node)
-      end
-    end
-
-    # in Ident[value: String]
-    # in { value: String }
-    def compile_hshptn(node)
-      compile_error(node) unless node.keyword_rest.nil?
-      compiled_constant = compile_node(node.constant) if node.constant
-
-      preprocessed =
-        node.keywords.to_h do |keyword, value|
-          compile_error(node) unless keyword.is_a?(Label)
-          [keyword.value.chomp(":").to_sym, compile_node(value)]
-        end
-
-      compiled_keywords = ->(other) do
-        deconstructed = other.deconstruct_keys(preprocessed.keys)
-
-        preprocessed.all? do |keyword, matcher|
-          matcher.call(deconstructed[keyword])
-        end
-      end
-
-      if compiled_constant
-        combine_and(compiled_constant, compiled_keywords)
-      else
-        compiled_keywords
-      end
-    end
-
-    # in /foo/
-    def compile_regexp_literal(node)
-      if (value = extract_string(node))
-        regexp = /#{value}/
-
-        ->(attribute) { regexp === attribute }
-      else
-        compile_error(node)
-      end
-    end
-
-    # in ""
-    # in "foo"
-    def compile_string_literal(node)
-      if node.parts.empty?
-        ->(attribute) { "" === attribute }
-      elsif (value = extract_string(node))
-        ->(attribute) { value === attribute }
-      else
-        compile_error(node)
-      end
-    end
-
-    # in :+
-    # in :foo
-    def compile_symbol_literal(node)
-      symbol = node.value.value.to_sym
-
-      ->(attribute) { symbol === attribute }
-    end
-
-    # in Foo
-    # in nil
-    def compile_var_ref(node)
-      value = node.value
-
-      if value.is_a?(Const)
-        compile_node(value)
-      elsif value.is_a?(Kw) && value.value.nil?
-        ->(attribute) { nil === attribute }
-      else
-        compile_error(node)
-      end
-    end
-
-    # Compile any kind of node. Dispatch out to the individual compilation
-    # methods based on the type of node.
-    def compile_node(node)
-      case node
-      when AryPtn
-        compile_aryptn(node)
-      when Binary
-        compile_binary(node)
-      when Const
-        compile_const(node)
-      when ConstPathRef
-        compile_const_path_ref(node)
-      when DynaSymbol
-        compile_dyna_symbol(node)
-      when HshPtn
-        compile_hshptn(node)
-      when RegexpLiteral
-        compile_regexp_literal(node)
-      when StringLiteral
-        compile_string_literal(node)
-      when SymbolLiteral
-        compile_symbol_literal(node)
-      when VarRef
-        compile_var_ref(node)
-      else
-        compile_error(node)
-      end
+      root = program.statements.body.first.consequent.pattern
+      Compiled.new(query, Compiler.new.compile_node(root))
     end
   end
 end
