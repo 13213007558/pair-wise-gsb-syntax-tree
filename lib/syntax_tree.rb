@@ -23,6 +23,7 @@ module SyntaxTree
 
   autoload :Database, "syntax_tree/database"
   autoload :DSL, "syntax_tree/dsl"
+  autoload :ExtractMethod, "syntax_tree/extract_method"
   autoload :FieldVisitor, "syntax_tree/field_visitor"
   autoload :Index, "syntax_tree/index"
   autoload :JSONVisitor, "syntax_tree/json_visitor"
