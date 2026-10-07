@@ -368,6 +368,12 @@ This function takes an input string containing Ruby code and returns the syntax 
 
 This function takes an input string containing Ruby code, parses it into its underlying syntax tree, and formats it back out to a string. You can optionally pass a second argument to this method as well that is the maximum width to print. It defaults to `80`.
 
+### SyntaxTree.extract_private_method(source, selection, method_name)
+
+This function performs a conservative source transformation that extracts one or more contiguous statements from a method body into a new private helper method on the same receiver. `selection` is a character-offset range, and `method_name` is the name of the helper to create.
+
+When the selection is safe to transform, the result is a plan containing the source edits, the arguments that must be passed to the helper, the local variables that must be returned, and the updated source. When the selection is incomplete or would change rescue, control flow, yield, binding, or evaluation behavior, the result is a rejection with a reason and location.
+
 ### SyntaxTree.mutation(&block)
 
 This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.

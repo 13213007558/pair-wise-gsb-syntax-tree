@@ -7,6 +7,7 @@ require "ripper"
 require_relative "syntax_tree/node"
 require_relative "syntax_tree/basic_visitor"
 require_relative "syntax_tree/visitor"
+require_relative "syntax_tree/extract_private_method"
 
 require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/parser"
