@@ -681,3 +681,5 @@ module SyntaxTree
     end
   end
 end
+
+require_relative "index/constant_resolver"

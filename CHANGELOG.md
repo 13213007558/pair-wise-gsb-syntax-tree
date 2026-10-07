@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Added `SyntaxTree::Index::ConstantResolver`, which statically resolves constant references to the definitions they may point to. It follows Ruby's lookup rules (lexical scopes — including the difference between `class A::B` and nested definitions — explicit `::` paths, superclass chains, and included modules), records the full lookup path for each reference, and preserves uncertainty in the presence of `const_missing`, dynamic `const_set`, and conditional definitions instead of executing project code. See `examples/constant_resolution` for a runnable demonstration.
+
 ## [6.3.0] - 2025-07-16
 
 ### Added
