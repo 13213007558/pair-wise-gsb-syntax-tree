@@ -17,6 +17,7 @@ require_relative "syntax_tree/version"
 # tools necessary to inspect and manipulate that syntax tree. It can be used to
 # build formatters, linters, language servers, and more.
 module SyntaxTree
+  autoload :CFG, "syntax_tree/cfg"
   # Syntax Tree the library has many features that aren't always used by the
   # CLI. Requiring those features takes time, so we autoload as many constants
   # as possible in order to keep the CLI as fast as possible.
@@ -107,6 +108,11 @@ module SyntaxTree
   # documentation generation.
   def self.index_file(filepath)
     Index.index_file(filepath)
+  end
+
+  # Builds a control-flow graph for a single Ruby method.
+  def self.cfg(source, method_name: nil)
+    CFG.for(source, method_name: method_name)
   end
 
   # A convenience method for creating a new mutation visitor.
