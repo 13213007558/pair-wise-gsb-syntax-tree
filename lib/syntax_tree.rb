@@ -33,6 +33,7 @@ module SyntaxTree
   autoload :MutationVisitor, "syntax_tree/mutation_visitor"
   autoload :Pattern, "syntax_tree/pattern"
   autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
+  autoload :Rename, "syntax_tree/rename"
   autoload :Search, "syntax_tree/search"
   autoload :WithScope, "syntax_tree/with_scope"
 
@@ -114,6 +115,14 @@ module SyntaxTree
     visitor = MutationVisitor.new
     yield visitor
     visitor
+  end
+
+  # Renames the local variable at the given position in the source to the
+  # new name and returns a Rename::Result. The position can be given either
+  # as a line/column pair (1-based line, 0-based column, both counted in
+  # characters) or as a character offset.
+  def self.rename_local(source, new_name, line: nil, column: nil, offset: nil)
+    Rename.rename(source, new_name, line: line, column: column, offset: offset)
   end
 
   # Parses the given source and returns the syntax tree.
