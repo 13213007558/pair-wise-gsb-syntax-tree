@@ -380,6 +380,27 @@ This function takes an input string containing Ruby code, an input string contai
 
 This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.
 
+### SyntaxTree::RefinementQuery
+
+`RefinementQuery` statically orders method candidates for a call according to the refinements activated at the call's lexical position. Only `using` and `refine` declarations written directly in source are analyzed. Dynamically constructed refinement modules return an `:unknown` result.
+
+```ruby
+query = SyntaxTree::RefinementQuery.for(source)
+result = query.query(call_node, declarations: known_declarations)
+
+result.status      # :known or :unknown
+result.candidates  # refinement candidates before ordinary candidates
+result.evidence    # the preceding lexical `using` declarations
+```
+
+The same receiver can therefore resolve differently at different lexical positions:
+
+```ruby
+"x".title          # ordinary candidates only
+using Styling
+"x".title          # refined `title`, then ordinary candidates
+```
+
 ## Nodes
 
 There are many different node types in the syntax tree. They are meant to be treated as immutable structs containing links to child nodes with minimal logic contained within their implementation. However, for the most part they all respond to a certain set of APIs, listed below.
