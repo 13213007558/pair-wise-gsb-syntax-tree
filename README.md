@@ -31,6 +31,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.mutation(&block)](#syntaxtreemutationblock)
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
   - [SyntaxTree.index(source)](#syntaxtreeindexsource)
+  - [SyntaxTree::Navigation.method_candidates(source, call)](#syntaxtreenavigationmethod_candidatessource-call)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
   - [copy(**attrs)](#copyattrs)
@@ -379,6 +380,51 @@ This function takes an input string containing Ruby code, an input string contai
 ### SyntaxTree.index(source)
 
 This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.
+
+### SyntaxTree::Navigation.method_candidates(source, call)
+
+This static navigation query takes Ruby source and a parsed call node. It returns the lexical method-lookup candidates for the statically inferred receiver. Refinement candidates are ordered before ordinary method candidates, and include both the `refine` declaration and the active `using` declaration as evidence. Only refinements written directly with `using` and `refine` are resolved; a dynamically constructed module returns an unknown result.
+
+Refinement state is lexical and positional. A `using` in a class or module body affects only later statements and method definitions in that lexical scope. It does not change calls earlier in the same file or methods already defined.
+
+```ruby
+source = <<~RUBY
+  class Foo
+    def bar
+      "normal"
+    end
+  end
+
+  module R
+    refine(Foo) do
+      def bar
+        "refined"
+      end
+    end
+  end
+
+  object = Foo.new
+  object.bar
+  using R
+  object.bar
+RUBY
+
+program = SyntaxTree.parse(source)
+calls = []
+visitor = Class.new(SyntaxTree::Visitor) do
+  define_method(:visit_call) do |node|
+    calls << node if node.message.value == "bar"
+    super(node)
+  end
+end.new
+program.accept(visitor)
+
+SyntaxTree::Navigation.method_candidates(source, calls[0]).candidates.map(&:kind)
+# => [:normal]
+
+SyntaxTree::Navigation.method_candidates(source, calls[1]).candidates.map(&:kind)
+# => [:refinement, :normal]
+```
 
 ## Nodes
 

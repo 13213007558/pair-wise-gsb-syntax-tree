@@ -31,6 +31,7 @@ module SyntaxTree
   autoload :Mermaid, "syntax_tree/mermaid"
   autoload :MermaidVisitor, "syntax_tree/mermaid_visitor"
   autoload :MutationVisitor, "syntax_tree/mutation_visitor"
+  autoload :Navigation, "syntax_tree/navigation"
   autoload :Pattern, "syntax_tree/pattern"
   autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
   autoload :Search, "syntax_tree/search"
