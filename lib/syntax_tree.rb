@@ -27,6 +27,7 @@ module SyntaxTree
   autoload :Index, "syntax_tree/index"
   autoload :JSONVisitor, "syntax_tree/json_visitor"
   autoload :LanguageServer, "syntax_tree/language_server"
+  autoload :LocalVariableRename, "syntax_tree/local_variable_rename"
   autoload :MatchVisitor, "syntax_tree/match_visitor"
   autoload :Mermaid, "syntax_tree/mermaid"
   autoload :MermaidVisitor, "syntax_tree/mermaid_visitor"
@@ -162,5 +163,9 @@ module SyntaxTree
   # node in the tree that matches the pattern to the given block.
   def self.search_file(filepath, query, &block)
     search(read(filepath), query, &block)
+  end
+
+  def self.rename_local_variable(source, position, new_name)
+    LocalVariableRename.rename(source, position, new_name)
   end
 end

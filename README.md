@@ -30,6 +30,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.format(source)](#syntaxtreeformatsource)
   - [SyntaxTree.mutation(&block)](#syntaxtreemutationblock)
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
+  - [SyntaxTree.rename_local_variable(source, byte_offset, new_name)](#syntaxtreerename_local_variablesource-byte_offset-new_name)
   - [SyntaxTree.index(source)](#syntaxtreeindexsource)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
@@ -375,6 +376,23 @@ This function yields a new mutation visitor to the block, and then returns the i
 ### SyntaxTree.search(source, query, &block)
 
 This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
+
+### SyntaxTree.rename_local_variable(source, byte_offset, new_name)
+
+Renames only the local variable binding that contains the given byte offset. The result contains byte ranges and an `apply` helper. Conflicts are returned without partial edits when a new name would capture another reference, collide with a numbered parameter, or otherwise change a binding.
+
+```ruby
+source = <<~RUBY
+  def rename(token)
+    token
+  end
+RUBY
+
+result = SyntaxTree.rename_local_variable(source, source.index("token"), :value)
+result.success? # => true
+result.apply(source)
+# => "def rename(value)\n  value\nend\n"
+```
 
 ### SyntaxTree.index(source)
 
